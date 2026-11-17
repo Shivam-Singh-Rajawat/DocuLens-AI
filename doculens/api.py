@@ -32,7 +32,7 @@ class SearchInput(BaseModel):
 
 class ChatInput(SearchInput):
     session_id: str | None = Field(default=None,max_length=128)
-    mode: Literal["qa", "compare", "summarize", "extract", "study", "quiz", "chat"] = "qa"
+    mode: Literal["qa", "compare", "summarize", "extract", "study", "quiz", "chat", "find"] = "qa"
     custom_instructions: str = Field(default="",max_length=1200)
 
 

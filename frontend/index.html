@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0c1222" />
   <title>DocuLens AI — Evidence-grounded intelligence</title>
-  <link rel="stylesheet" href="/styles.css?v=library-aware-3" />
+  <link rel="stylesheet" href="/styles.css?v=content-find-watch-4" />
 </head>
 <body>
   <div class="app">
@@ -44,6 +44,7 @@
             <button class="suggestion" data-mode="compare" data-question="Compare the approaches, findings and limitations across these documents">⇄ Compare documents <span>↗</span></button>
             <button class="suggestion" data-question="What are the most important facts and figures supported by my documents?">▤ Extract important facts <span>↗</span></button>
             <button class="suggestion" data-question="Which PDFs are in my sources?">▧ List my PDFs <span>↗</span></button>
+            <button class="suggestion" data-mode="find" data-question="Find the passage about customer satisfaction">⌕ Find matching passages <span>↗</span></button>
             <button class="suggestion" data-mode="compare" data-question="What do these documents have in common?">◎ Find common themes <span>↗</span></button>
           </div>
         </div>
@@ -54,7 +55,7 @@
             <input id="chatFiles" type="file" accept=".pdf,.docx,.txt,.md,.markdown,.html,.htm,.csv,.json" multiple hidden />
             <div id="chatAttachments" class="chat-attachments" aria-live="polite"></div>
             <textarea id="question" rows="2" maxlength="4000" placeholder="Ask about your documents, or attach a PDF..." aria-label="Ask your documents"></textarea>
-            <div class="composer-footer"><div class="composer-settings"><button id="chatAttachButton" type="button" class="attach-btn" title="Attach PDFs and other documents" aria-label="Attach documents">＋ Attach</button><select id="mode" title="Answer mode"><option value="qa">✧ Question & answer</option><option value="compare">⇄ Compare</option><option value="summarize">▤ Summarize</option><option value="extract">◉ Extract facts</option><option value="study">◎ Study / explain</option><option value="quiz">❖ Generate quiz</option><option value="chat">✦ General chat (no documents)</option></select><select id="topK" title="Number of evidence chunks"><option value="3">3 sources</option><option value="5" selected>5 sources</option><option value="8">8 sources</option></select><label class="tiny-check"><input id="rerank" type="checkbox" checked /> Rerank</label></div><button id="send" type="submit">Send <span>➜</span></button></div>
+            <div class="composer-footer"><div class="composer-settings"><button id="chatAttachButton" type="button" class="attach-btn" title="Attach PDFs and other documents" aria-label="Attach documents">＋ Attach</button><select id="mode" title="Answer mode"><option value="qa">✧ Question & answer</option><option value="compare">⇄ Compare</option><option value="summarize">▤ Summarize</option><option value="extract">◉ Extract facts</option><option value="find">⌕ Find content / passages</option><option value="study">◎ Study / explain</option><option value="quiz">❖ Generate quiz</option><option value="chat">✦ General chat (no documents)</option></select><select id="topK" title="Number of evidence chunks"><option value="3">3 sources</option><option value="5" selected>5 sources</option><option value="8">8 sources</option></select><label class="tiny-check"><input id="rerank" type="checkbox" checked /> Rerank</label></div><button id="send" type="submit">Send <span>➜</span></button></div>
           </form>
           <details class="advanced-prompt"><summary>Advanced · Custom answer instructions</summary><textarea id="customInstructions" maxlength="1200" placeholder="e.g. Answer in simple language, use a comparison table, explain any technical terms."></textarea></details>
           <div class="bottom-caption" id="chatModeHint">Document modes use retrieved evidence. General chat answers without document citations.</div>
@@ -84,6 +85,6 @@
   </div>
   <div id="toast" class="toast" role="status"></div>
   <div id="tokenModal" class="modal-backdrop" hidden><div class="modal"><h2>Workspace access</h2><p>Enter the token matching <code>APP_ACCESS_TOKEN</code> in your backend environment. Leave empty for local development without authentication.</p><input id="tokenInput" class="field" type="password" placeholder="Workspace token"/><div class="modal-actions"><button id="cancelToken" class="subtle-btn">Cancel</button><button id="saveToken" class="primary-btn">Save for this tab</button></div></div></div>
-  <script src="/app.js?v=library-aware-3" defer></script>
+  <script src="/app.js?v=content-find-watch-4" defer></script>
 </body>
 </html>

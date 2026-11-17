@@ -8,7 +8,8 @@ from uuid import uuid4
 from doculens.chunking import chunk_pages
 from doculens.chat_intents import (exact_search_term, exact_word_counts, is_greeting,
                                   is_vague_document_question, library_inventory_kind,
-                                  is_commonality_question, FILE_TYPE_NAMES, FILE_LABELS)
+                                  is_commonality_question, FILE_TYPE_NAMES, FILE_LABELS,
+                                  requested_passage_topic, excerpt_around_topic)
 from doculens.database import DocumentDB, utcnow
 from doculens.postgres_store import PostgresDocumentDB
 from doculens.embeddings import HashEmbeddings, SentenceEmbeddings
@@ -233,6 +234,51 @@ class RAGService:
                                  "selection_method": "document-overview"})
         return evidence, warnings
 
+    def _find_passages(self, question: str, topic: str, source_ids: list[str] | None,
+                       session_id: str, top_k: int | None, rerank: bool) -> dict:
+        """Retrieve actual document passages with clickable page refs, no LLM rewriting."""
+        result = self.search(topic, source_ids=source_ids, top_k=min(top_k or 5, 8),
+                             rerank=rerank)
+        matches = [
+            hit for hit in result["hits"]
+            if hit.get("bm25_score",0) > 0 or
+            hit.get("semantic_score",0) >= max(0.43, self.settings.min_similarity)
+        ]
+        # With exact lexical matches, avoid unrelated semantic-only passages.
+        if any(hit.get("bm25_score",0)>0 for hit in matches):
+            matches = [hit for hit in matches if hit.get("bm25_score",0)>0]
+        lines = (
+            ["**Found these relevant passages in your selected sources:**"]
+            if matches else
+            [f"**No matching passage found** for **{topic}** in the selected documents.",
+             "Try a narrower keyword or phrase, select another source, or check "
+             "whether this PDF needs OCR for scanned pages."]
+        )
+        sources = []
+        for hit in matches:
+            number = len(sources) + 1
+            doc = self.db.document(hit["source_id"]) or {}
+            page = hit.get("page",1) if hit.get("kind") == "pdf" else None
+            excerpt = excerpt_around_topic(hit["text"], topic, max_chars=850)
+            reference = f"Page {page}" if page else "Text"
+            lines.append(f"\n**{doc.get('name',hit['source_name'])} — {reference} [{number}]**\n\n> {excerpt}")
+            sources.append({
+                "number":number, "source_id":hit["source_id"],
+                "source_name":hit["source_name"], "page":page,
+                "kind":hit.get("kind","text"), "chunk_id":hit["id"],
+                "origin":doc.get("origin"), "has_file":bool(doc.get("file_path")),
+                "excerpt":excerpt, "selection_method":"passage-match",
+                "semantic_score":round(hit.get("semantic_score",0),3),
+                "rerank_score":round(hit["rerank_score"],3)
+                if "rerank_score" in hit else None,
+            })
+        answer="\n".join(lines)
+        self.db.message(session_id,"user",question)
+        self.db.message(session_id,"assistant",answer)
+        return {"session_id":session_id,"question":question,"answer":answer,
+                "sources":sources,"provider":"passage-search","reranked":result["reranked"],
+                "warnings":result["warnings"],"retrieval_ms":result["latency_ms"]}
+
     def chat(self, question: str, *, session_id: str | None = None, source_ids=None,
              top_k: int | None = None, rerank=True, mode="qa", custom_instructions="") -> dict:
         if not question.strip():
@@ -267,6 +313,10 @@ class RAGService:
         kind = library_inventory_kind(question)
         if kind:
             return self._library_answer(question, kind, source_ids, session_id)
+        passage_topic = requested_passage_topic(question)
+        if mode == "find" or (mode == "qa" and passage_topic):
+            return self._find_passages(question, passage_topic or question, source_ids,
+                                       session_id, top_k, rerank)
         comparison = (is_commonality_question(question, mode) and
                       len(source_ids or self.db.documents()) >= 2)
         retrieval_query = (

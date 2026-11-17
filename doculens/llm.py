@@ -10,6 +10,7 @@ PROMPT_MODES = {
     "study": "Teach the topic step-by-step in accessible language with evidence-backed examples.",
     "quiz": "Create 5 questions and answers that can be verified against the source evidence.",
     "chat": "General-purpose chatbot mode. No document citations are implied.",
+    "find": "Find relevant passages verbatim with page references, without LLM paraphrasing.",
 }
 
 SYSTEM_PROMPT = """You are DocuLens AI, an evidence-grounded document assistant.

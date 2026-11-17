@@ -101,3 +101,21 @@ These checks use a deterministic offline embedding backend with persistent SQLit
 - Improved abstention handling: does not attach random citations to a model answer that says information was unavailable.
 - Added All/None source selection count and two chat shortcuts. Chrome browser smoke passed source toggle, shortcut interactions, and page JavaScript checks.
 - Tests observed failing before implementation; focused suite 9 passed and full local suite **46 passed** at last run. This is a local RAG usability improvement, not model training or a comprehensive external hallucination benchmark.
+
+## Find content and scheduled local health watch — November 18, 2026
+
+- Added a `Find content / passages` mode and automatic detection of targeted extract-the-passage requests in document Q&A, bypassing LLM generation. Retrieved excerpts are focused on matching sentences, with original PDF page references; unrelated results are filtered.
+- Added tests for PDF page 2 retrieval, no-match/selected-source abstention, API/UI mode selection and focused snippets. Observed failing tests before implementation. Full suite after changes: 57 tests passed; JavaScript syntax compiled.
+- Windows Scheduled Task `DocuLens AI Health Watch` registered to run every 15 minutes for the interactive Windows user, using restricted execution privilege. A test invocation returned Task Scheduler result 0 and logged health=healthy/retrieval=ok.
+- First watch attempt flagged degraded during a cold model load. Investigated actual retrieval: the benchmark document was ranked #1; the issue was the request timing out before lazy model initialization. Added a longer timeout with one retry; watch now returns healthy, quality ok.
+- Verified actual self-recovery by terminating only the existing DocuLens FastAPI server after checking its command line. The watchdog restarted it and restored healthy local API with 5 documents, 50 Chroma chunks and retrieval=ok. No document or database records were removed.
+- Improved watchdog recovery to use the safe restart script, including when a DocuLens-owned process remains bound to port 8000 but is no longer answering health checks. It refuses to kill unrelated processes.
+- Ongoing checks only run when the laptop is on and logged in; quality warnings are recorded for future debugging, not autonomously resolved by code edits. Monitoring makes no calls to a Gemini model.
+
+## Final comprehensive check — November 18, 2026
+
+- `Verify_DocuLens.bat` completed successfully: PostgreSQL database reachable, 57 pytest tests passed, and live hybrid retrieval passed both demo queries (Recall@5 1.0 and MRR 0.75 on only 2 illustrative cases).
+- Live Chrome UI check passed source selection, PDF listing, Find content shortcut and topic prompt; no JavaScript page errors.
+- `scripts.smoke_find_content` found five candidate Case Study PDF passages across pages 1, 3, 5 and 6, including literal 'customer satisfaction' evidence and original-page references; the test conversation was removed.
+- A live `scripts.health_watch` run reported healthy and retrieval=ok, preserving 5 source records and 50 vector chunks.
+- Windows Scheduled Task remained ready, last task result 0; no credentials, model weights, uploads, or database files were staged for GitHub.

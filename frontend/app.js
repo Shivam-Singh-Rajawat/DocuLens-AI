@@ -168,7 +168,7 @@ function appendMessage(role,text,extra=null){
  const card=document.createElement('div');card.className='message '+(role==='user'?'user':'assistant');
  const person=role==='user'?'You':'DocuLens AI';const avatar=role==='user'?'●':'✦';
  let sourceMarkup='';
- if(extra?.sources?.length){sourceMarkup=`<details class="source-summary"><summary>▤ ${extra.sources.length} retrieved evidence excerpts ${extra.reranked?'· Reranked':''}</summary><div class="source-items">${extra.sources.map(s=>`<div class="source-item" id="source-${s.number}"><b>[${s.number}] ${escapeHtml(s.source_name)}</b><small>${s.page?'Page '+s.page:'Text source'} · ${s.selection_method==='document-overview'?'Document overview':'Vector similarity '+s.semantic_score}</small><p>${escapeHtml(s.excerpt)}</p>${s.origin?`<button data-source-url="${escapeHtml(s.origin)}">Open webpage</button>`:s.has_file?`<button data-source-open="${escapeHtml(s.source_id)}" data-source-page="${s.page||''}">Open original</button>`:''}</div>`).join('')}</div></details>`;}
+ if(extra?.sources?.length){sourceMarkup=`<details class="source-summary"><summary>▤ ${extra.sources.length} retrieved evidence excerpts ${extra.reranked?'· Reranked':''}</summary><div class="source-items">${extra.sources.map(s=>`<div class="source-item" id="source-${s.number}"><b>[${s.number}] ${escapeHtml(s.source_name)}</b><small>${s.page?'Page '+s.page:'Text source'} · ${s.selection_method==='document-overview'?'Document overview':s.selection_method==='passage-match'?'Matching source passage':'Vector similarity '+s.semantic_score}</small><p>${escapeHtml(s.excerpt)}</p>${s.origin?`<button data-source-url="${escapeHtml(s.origin)}">Open webpage</button>`:s.has_file?`<button data-source-open="${escapeHtml(s.source_id)}" data-source-page="${s.page||''}">Open original</button>`:''}</div>`).join('')}</div></details>`;}
  card.innerHTML=`<div class="avatar ${role==='assistant'?'ai':''}">${avatar}</div><div class="bubble"><div class="message-head"><b>${person}</b><small>${role==='assistant'&&extra?.provider?escapeHtml(extra.provider)+' · '+extra.retrieval_ms+' ms retrieval':''}</small></div><div class="message-text">${formatText(text)}</div>${sourceMarkup}</div>`;
  $('messages').appendChild(card);$('messages').scrollTop=$('messages').scrollHeight;
  card.querySelectorAll('[data-citation]').forEach(btn=>btn.onclick=()=>{const target=card.querySelector('#source-'+btn.dataset.citation);if(target){const parent=target.closest('details');parent.open=true;target.scrollIntoView({behavior:'smooth',block:'nearest'});}});
@@ -211,9 +211,12 @@ async function sendMessage(event){
 }
 $('mode').addEventListener('change',()=>{
  const general=$('mode').value==='chat';
- $('question').placeholder=general?'Ask anything (no document citations)...':'Ask about your documents, or attach a PDF...';
+ const finding=$('mode').value==='find';
+ $('question').placeholder=general?'Ask anything (no document citations)...':
+    finding?'Which topic, quote, or passage should I find?':'Ask about your documents, or attach a PDF...';
  $('chatModeHint').textContent=general
   ? 'General chat uses Gemini without searching uploaded documents.'
+  : finding?'Find content quotes matching PDF passages with clickable page references. No Gemini generation needed.'
   : 'Document modes use retrieved evidence with page references.';
  $('topK').disabled=general;
  $('rerank').disabled=general;
@@ -221,7 +224,7 @@ $('mode').addEventListener('change',()=>{
 $('chatForm').onsubmit=sendMessage;
 $('question').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}};
 $('newChat').onclick=()=>{state.session=null;sessionStorage.removeItem('doculens_session');pendingChatFiles=[];renderChatAttachments();$('messages').innerHTML='';$('messages').classList.remove('active');$('hero').classList.remove('hidden');$('question').value='';note('');showView('chat');toast('New conversation started');};
-document.querySelectorAll('.suggestion').forEach(btn=>btn.onclick=()=>{$('question').value=btn.dataset.question;if(btn.dataset.mode)$('mode').value=btn.dataset.mode;$('question').focus();});
+document.querySelectorAll('.suggestion').forEach(btn=>btn.onclick=()=>{$('question').value=btn.dataset.question;if(btn.dataset.mode){$('mode').value=btn.dataset.mode;$('mode').dispatchEvent(new Event('change'));}$('question').focus();});
 $('runEval').onclick=async()=>{
  const output=$('evalResults');$('runEval').disabled=true;
  try{

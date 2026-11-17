@@ -22,6 +22,10 @@ with sync_playwright() as pw:
     page.locator('button[data-question="What do these documents have in common?"]').click()
     assert page.locator("#mode").input_value()=="compare"
     assert "What do these documents have in common?"==page.locator("#question").input_value()
+    page.locator('button[data-mode="find"]').click()
+    assert page.locator("#mode").input_value()=="find"
+    assert "Which topic" in page.locator("#question").get_attribute("placeholder")
+    print("PASS Find content shortcut, mode hint, and topic prompt")
     assert not errors,errors
     print("PASS compare-documents shortcut and JavaScript console")
     browser.close()

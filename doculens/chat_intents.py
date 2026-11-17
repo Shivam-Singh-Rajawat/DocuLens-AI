@@ -128,3 +128,48 @@ def is_commonality_question(question: str, mode: str = "qa") -> bool:
         re.search(r"\b(common|similarities|similarity|overlap|shared|compare|differences?)\b", q)
         and re.search(r"\b(files?|documents?|sources?|pdfs?|papers?|notes?|them|these|both)\b", q)
     )
+
+
+def requested_passage_topic(question: str) -> str | None:
+    """Parse explicit extract-the-source-content requests, not ordinary questions."""
+    match = re.match(
+        r"^\s*(?:please\s+)?(?:find|locate|show(?:\s+me)?|quote|give(?:\s+me)?)\s+"
+        r"(?:(?:the|a|any|some|relevant|exact)\s+)?"
+        r"(?:content|passages?|paragraphs?|sections?|excerpts?|parts?|evidence|text)\s+"
+        r"(?:about|on|regarding|mentioning|that\s+(?:mentions|discusses|explains|talks\s+about))\s+"
+        r"(.+?)\s*[?.!]*$",question,flags=re.I)
+    if not match:
+        return None
+    topic = re.sub(
+        r"\s+in\s+(?:this|the|our|my)(?:\s+(?:pdf|document|file|sources?))?\s*$",
+        "", match.group(1),flags=re.I
+    ).strip()
+    return topic if 2 <= len(topic) <= 240 else None
+
+
+def excerpt_around_topic(text: str, topic: str, max_chars: int = 850) -> str:
+    """Return source text focused around the matched phrase, never a paraphrase."""
+    clean = re.sub(r"\s+", " ", text).strip()
+    requested = re.sub(r"\s+", " ", topic).strip()
+    phrase = re.search(re.escape(requested), clean, flags=re.I) if requested else None
+    pos = phrase.start() if phrase else -1
+    if pos < 0:
+        # For a paraphrased request, focus on the first content term found.
+        tokens = [w for w in re.findall(r"\w+", requested.casefold())
+                  if len(w) > 3 and w not in {"about", "which", "where", "when", "what", "please"}]
+        matches = [clean.casefold().find(w) for w in tokens if w in clean.casefold()]
+        pos = min(matches) if matches else -1
+    start = 0
+    if pos >= 0:
+        sentence_starts = [clean.rfind(mark, 0, pos) + len(mark)
+                           for mark in (". ", "? ", "! ") if clean.rfind(mark,0,pos) >= 0]
+        start = max(sentence_starts, default=0)
+        if pos - start > 180:
+            start = max(0, pos - 120)
+    end = min(len(clean), start + max_chars)
+    excerpt = clean[start:end].strip()
+    if start and clean[start-1] not in ".!? ":
+        excerpt = "..." + excerpt
+    if end < len(clean):
+        excerpt += "..."
+    return excerpt

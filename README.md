@@ -112,6 +112,19 @@ A no-server command-line demo is also included:
 python -m scripts.demo_offline
 ```
 
+## Find exact source content and keep the local app healthy
+
+**Find content / passages:** Select the relevant PDFs in the sidebar, then choose **Find content / passages** (or just ask in Question & Answer mode, e.g., `find the passage about customer satisfaction`). DocuLens retrieves source passages, focuses each quote around the requested words, and returns the matching file and PDF page with clickable citations. It does not ask Gemini to paraphrase the selected text, so this mode works during LLM outages. If nothing qualifies, it reports no matching passage instead of returning unrelated filler. This is source-text retrieval, not the same as retraining an AI model.
+
+**Automatic local health watch:** Windows Task Scheduler runs `Watch_DocuLens.ps1` through the **DocuLens AI Health Watch** task every 15 minutes while you're logged in. It checks local `/api/health` and performs one real, unbilled retrieval query against `paper_b.md` (skipped if you delete that demo source). If the server is down, it safely restarts only the verified DocuLens process using `Restart_DocuLens.ps1`; it will not terminate unrelated processes. On retrieval-quality failure it records `degraded` for review without automatically modifying or deleting uploaded documents, model files, or indexes.
+
+- To review recent checks, double-click `Watch_Status.bat`. Detailed logs are in `data/logs/health-watch.jsonl` (rotated automatically, containing status and counts only, not document text or secrets).
+- To re-enable or update the scheduled watch: `powershell -NoProfile -ExecutionPolicy Bypass -File .\\Install_DocuLens_Watch.ps1`
+- To disable it: `powershell -NoProfile -ExecutionPolicy Bypass -File .\\Install_DocuLens_Watch.ps1 -Remove`
+- To run a check now: `powershell -NoProfile -ExecutionPolicy Bypass -File .\\Watch_DocuLens.ps1`
+
+The watch runs **only while the Windows user is signed in and the laptop is on**. It can restart the service and report quality issues, but it does not autonomously edit source code or deploy changes. Periodic health checks do not use a paid LLM API.
+
 ## Library-aware answers and document comparisons
 
 DocuLens answers file inventory questions from PostgreSQL metadata instead of sending vague phrases to vector search. Examples:
