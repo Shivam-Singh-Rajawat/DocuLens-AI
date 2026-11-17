@@ -112,6 +112,16 @@ A no-server command-line demo is also included:
 python -m scripts.demo_offline
 ```
 
+## Conversational chatbot (document mode + general mode)
+
+The chat composer has two distinct answer boundaries:
+
+- **Question & answer / Study / Compare / Summarize:** Questions are grounded in selected documents. Attach a PDF directly in chat; that PDF becomes the active selected source for follow-up questions. Source references and original PDF page numbers appear where available. Ask `what is this pdf about?` for a summary-focused retrieval query.
+- **General chat (no documents):** Use Gemini or Ollama as an ordinary conversational assistant, with session history, without claiming document citations. This mode works even if no documents are selected.
+- **Exact word or phrase lookup:** Ask `find the word the in this` or `count the word theory`. This bypasses stop-word removal and returns exact counts by document/page, including ordinary words such as *the*. This is deterministic text search, not semantic similarity.
+
+When Gemini has a temporary server error, the document mode tries a secondary lightweight model, then returns clearly labelled retrieved evidence rather than HTTP 500. General chat provides an availability explanation if both models are down. This is a retrieval/application improvement, **not fine-tuning or model retraining**. Scanned PDFs still require OCR support to be enabled separately.
+
 ## One-click verification on Windows
 
 After starting DocuLens, double-click `Verify_DocuLens.bat` in the project root. This checks your local PostgreSQL connection, runs the Python automated test suite, and measures sample retrieval quality through the live API. The tool does not alter your PDFs or conversation history.

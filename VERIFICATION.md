@@ -73,3 +73,21 @@ These checks use a deterministic offline embedding backend with persistent SQLit
 - On the two illustrative sample-paper retrieval queries: Recall@5 1.0, MRR 0.75, average retrieval about 48.1 ms in the last run. This is not a production benchmark.
 - Current setup at final check: PostgreSQL metadata, Chroma vectors, local sentence embeddings, Gemini integration, web UI and document retrieval tested. Code lives in the existing local Windows folder; GitHub deployment was not attempted.
 - Limitations: OCR for scanned documents remains off; application authentication is not configured for internet deployment; citations are retrieved-evidence references and do not prove every LLM-generated claim.
+
+## Conversational chat and exact search upgrade — 2026-11-17
+
+- Diagnosed `Case Study.pdf`: 7 extractable pages and 29 indexed chunks. The query `find the word the in this` was incorrectly rejected because BM25 filtered stop-words and semantic similarity failed threshold.
+- Added deterministic exact word/phrase lookup independent of embeddings, with per-page counts and source references. Live result on the existing Case Study PDF: 178 whole-word occurrences of `the` across seven pages.
+- Added lightweight greeting answers, summary-focused retrieval for vague document questions, and explicit General chat mode (no retrieval or misleading document citations), plus attachment-specific follow-up selection.
+- Added Gemini transient-error fallback via a second model and evidence-only answers for document Q&A if both unavailable.
+- Observed failing tests first for missing chat intents and Gemini fallback; corrected implementation. Last local regression suite: 39 passing tests.
+- Publishing to a new **private** repository; Git excludes .env, database credentials, local PostgreSQL/Chroma data, PDFs, and venv.
+
+## Final local chatbot checks — 2026-11-17
+
+- Repeated a live exact-word lookup on user's selected Case Study PDF: provider=document-search; 178 occurrences of `the` across seven matching pages; results returned with source references.
+- Asked an ordinary general question with `mode=chat` and no document selection: Gemini returned a meaningful response, provider=gemini, no bogus PDF citations.
+- Added transient Gemini fallback for both grounded and general chat; focused fallback tests demonstrate a secondary-model attempt after HTTP 503, and document retrieval degrades to labelled evidence-only output if the LLM is down.
+- Full local suite: **39 tests passed**, and `node --check frontend/app.js` completed successfully.
+- Chrome browser attachment regression: Attach button, staged PDF, removal, clipboard-file paste, drag/drop, upload and document-scoped chat request all passed. Temporary test upload was deleted.
+- User's actual PostgreSQL / Chroma records are retained; local secret files are excluded by `.gitignore`. Source code pushed to private GitHub repository only.

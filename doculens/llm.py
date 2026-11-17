@@ -138,24 +138,32 @@ def generate_general(question: str, history: list[dict], settings, custom_instru
         from google.genai import types, errors
         client = genai.Client(api_key=settings.gemini_key)
         try:
-            try:
-                response = client.models.generate_content(
-                    model=settings.gemini_model,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=GENERAL_CHAT_SYSTEM_PROMPT,
-                        temperature=0.3, max_output_tokens=1500,
-                    ),
-                )
-            except errors.APIError as exc:
-                code = getattr(exc, "code", None)
-                raise RuntimeError(
-                    f"Gemini general chat failed (HTTP {code or 'unknown'}). "
-                    "Check the selected model, quota, and network."
-                ) from exc
-            if not response.text:
-                raise RuntimeError("Gemini returned an empty response.")
-            return response.text, "gemini"
+            fallback = ("gemini-3.1-flash-lite" if
+                        settings.gemini_model != "gemini-3.1-flash-lite"
+                        else "gemini-flash-lite-latest")
+            for model_name in (settings.gemini_model, fallback):
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=GENERAL_CHAT_SYSTEM_PROMPT,
+                            temperature=0.3, max_output_tokens=1500,
+                        ),
+                    )
+                except errors.APIError as exc:
+                    code = getattr(exc, "code", None)
+                    if code in (500, 502, 503, 504):
+                        continue
+                    if code == 429:
+                        return ("Gemini rate limit reached. Try again later.", "unavailable")
+                    raise RuntimeError(
+                        f"Gemini general chat failed (HTTP {code or 'unknown'})."
+                    ) from exc
+                if response.text:
+                    return response.text, "gemini"
+            return ("Gemini is temporarily unavailable. Your documents remain "
+                    "searchable in Question & answer mode.", "unavailable")
         finally:
             client.close()
     if provider == "ollama":
