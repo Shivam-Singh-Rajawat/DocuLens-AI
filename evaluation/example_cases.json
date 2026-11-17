@@ -1,0 +1,10 @@
+[
+  {
+    "question": "What Recall@5 did the hybrid fusion experiment report?",
+    "expected_source_ids": ["REPLACE_WITH_PAPER_B_ID_FROM_LIBRARY"]
+  },
+  {
+    "question": "Which paper used 800-character text chunks?",
+    "expected_source_ids": ["REPLACE_WITH_PAPER_A_ID_FROM_LIBRARY"]
+  }
+]

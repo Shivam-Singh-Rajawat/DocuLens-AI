@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c1222" />
+  <title>DocuLens AI — Evidence-grounded intelligence</title>
+  <link rel="stylesheet" href="/styles.css?v=chat-attachments-1" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-icon">✦</div><div><strong>DocuLens <span>AI</span></strong><small>KNOWLEDGE WORKSPACE</small></div></div>
+      <div class="workspace-label">YOUR WORKSPACE</div>
+      <nav aria-label="Main navigation">
+        <button class="nav-item active" data-view="chat"><span>◈</span> Ask your documents</button>
+        <button class="nav-item" data-view="library"><span>▤</span> Knowledge library</button>
+        <button class="nav-item" data-view="evaluate"><span>◎</span> RAG evaluation</button>
+      </nav>
+      <div class="sidebar-section-title"><span>YOUR SOURCES</span><button id="refreshDocs" title="Refresh documents">↻</button></div>
+      <div id="documentList" class="document-list"><div class="side-loading">No documents uploaded yet.</div></div>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-bottom">
+        <div class="metric-row"><span>Documents</span><strong id="docCount">0</strong></div>
+        <div class="metric-row"><span>Indexed chunks</span><strong id="chunkCount">0</strong></div>
+        <div class="connection" id="connection"><i></i> Connecting to API...</div>
+      </div>
+    </aside>
+    <div class="main-shell">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Workspace</span><span class="slash">/</span><strong id="viewLabel">Ask your documents</strong></div>
+        <div class="header-actions"><span class="model-label" id="modelLabel">RAG pipeline</span><button id="tokenButton" class="header-button" title="Set workspace access token">⚙ <span>Access</span></button><button id="newChat" class="header-button">＋ <span>New chat</span></button></div>
+      </header>
+      <main id="chatView" class="view active">
+        <div id="hero" class="hero">
+          <div class="orb orb-one"></div><div class="orb orb-two"></div>
+          <div class="hero-symbol">✦</div>
+          <div class="kicker">YOUR DOCUMENTS, EXPLORED</div>
+          <h1>Find the answers <span>within.</span></h1>
+          <p>Ground every response in your documents. Ask complex questions across PDFs, pasted notes, and web pages, with traceable source references.</p>
+          <div class="suggestions">
+            <button class="suggestion" data-question="Summarize the most important ideas in my documents">✧ Summarize key ideas <span>↗</span></button>
+            <button class="suggestion" data-mode="compare" data-question="Compare the approaches, findings and limitations across these documents">⇄ Compare documents <span>↗</span></button>
+            <button class="suggestion" data-question="What are the most important facts and figures supported by my documents?">▤ Extract important facts <span>↗</span></button>
+          </div>
+        </div>
+        <div id="messages" class="messages" aria-live="polite"></div>
+        <div class="chat-bottom">
+          <div id="notice" class="notice" hidden></div>
+          <form id="chatForm" class="composer" aria-label="Chat and attach documents">
+            <input id="chatFiles" type="file" accept=".pdf,.docx,.txt,.md,.markdown,.html,.htm,.csv,.json" multiple hidden />
+            <div id="chatAttachments" class="chat-attachments" aria-live="polite"></div>
+            <textarea id="question" rows="2" maxlength="4000" placeholder="Ask about your documents, or attach a PDF..." aria-label="Ask your documents"></textarea>
+            <div class="composer-footer"><div class="composer-settings"><button id="chatAttachButton" type="button" class="attach-btn" title="Attach PDFs and other documents" aria-label="Attach documents">＋ Attach</button><select id="mode" title="Answer mode"><option value="qa">✧ Question & answer</option><option value="compare">⇄ Compare</option><option value="summarize">▤ Summarize</option><option value="extract">◉ Extract facts</option><option value="study">◎ Study / explain</option><option value="quiz">❖ Generate quiz</option><option value="chat">✦ General chat (no documents)</option></select><select id="topK" title="Number of evidence chunks"><option value="3">3 sources</option><option value="5" selected>5 sources</option><option value="8">8 sources</option></select><label class="tiny-check"><input id="rerank" type="checkbox" checked /> Rerank</label></div><button id="send" type="submit">Send <span>➜</span></button></div>
+          </form>
+          <details class="advanced-prompt"><summary>Advanced · Custom answer instructions</summary><textarea id="customInstructions" maxlength="1200" placeholder="e.g. Answer in simple language, use a comparison table, explain any technical terms."></textarea></details>
+          <div class="bottom-caption" id="chatModeHint">Document modes use retrieved evidence. General chat answers without document citations.</div>
+        </div>
+      </main>
+      <main id="libraryView" class="view content-page">
+        <div class="page-heading"><div><div class="kicker">KNOWLEDGE BASE</div><h1>Source library</h1><p>Add documents and content. DocuLens extracts text, creates embeddings, and indexes the results.</p></div><div class="page-heading-icon">▤</div></div>
+        <div class="upload-tabs"><button class="upload-tab active" data-input="file">↑ Upload files</button><button class="upload-tab" data-input="text">✎ Paste text</button><button class="upload-tab" data-input="url">↗ Web URL</button></div>
+        <div id="fileInputPanel" class="input-panel active"><div id="dropzone" class="dropzone"><div class="drop-icon">↑</div><strong>Drop files here, or click to browse</strong><p>PDF, DOCX, TXT, Markdown, HTML, CSV, JSON · up to 20 MB each</p><input id="files" type="file" multiple accept=".pdf,.docx,.txt,.md,.markdown,.html,.htm,.csv,.json" hidden /></div><button id="uploadFiles" class="primary-btn" disabled>Upload selected files</button><div id="chosenFiles" class="chosen-files"></div></div>
+        <div id="textInputPanel" class="input-panel"><label for="textTitle">Document title</label><input id="textTitle" class="field" placeholder="e.g. Project meeting notes" /><label for="textContent">Content</label><textarea id="textContent" class="field large-text" placeholder="Paste paragraphs, notes, transcripts, documentation, or other text here..."></textarea><button id="uploadText" class="primary-btn">Add to knowledge base</button></div>
+        <div id="urlInputPanel" class="input-panel"><label for="webUrl">Public webpage URL</label><input id="webUrl" class="field" type="url" placeholder="https://example.com/article"/><p class="field-note">Supports public HTML pages, text, JSON and PDF URLs. Private network destinations are blocked.</p><button id="uploadUrl" class="primary-btn">Import website content</button></div>
+        <div class="library-title"><h2>Indexed sources <span id="libraryCount">0</span></h2><button class="subtle-btn" id="reloadLibrary">↻ Refresh</button></div>
+        <div id="libraryGrid" class="library-grid"></div>
+      </main>
+      <main id="evaluateView" class="view content-page">
+        <div class="page-heading"><div><div class="kicker">QUALITY CONTROL</div><h1>Evaluate retrieval</h1><p>Measure Recall@K, mean reciprocal rank (MRR), and retrieval latency against ground-truth documents.</p></div><div class="page-heading-icon">◎</div></div>
+        <div class="eval-card"><h2>Retrieval test set</h2><p>Each case needs a question and one or more expected source IDs. Select a document in the library to copy its ID.</p><textarea id="evalJson" class="field eval-text" spellcheck="false">[
+  {
+    "question": "What is the central topic?",
+    "expected_source_ids": ["REPLACE_WITH_DOCUMENT_ID"]
+  }
+]</textarea><div class="eval-actions"><label>Top K <select id="evalK"><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option></select></label><button class="primary-btn" id="runEval">Run evaluation</button></div></div>
+        <div id="evalResults"></div>
+        <div class="eval-advice"><strong>What these metrics measure</strong><p><b>Recall@K</b> checks whether expected documents were retrieved. <b>MRR</b> rewards retrieving a relevant document earlier. These do not establish LLM answer faithfulness; inspect citations separately.</p></div>
+      </main>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="tokenModal" class="modal-backdrop" hidden><div class="modal"><h2>Workspace access</h2><p>Enter the token matching <code>APP_ACCESS_TOKEN</code> in your backend environment. Leave empty for local development without authentication.</p><input id="tokenInput" class="field" type="password" placeholder="Workspace token"/><div class="modal-actions"><button id="cancelToken" class="subtle-btn">Cancel</button><button id="saveToken" class="primary-btn">Save for this tab</button></div></div></div>
+  <script src="/app.js?v=chat-modes-2" defer></script>
+</body>
+</html>
