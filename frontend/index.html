@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0c1222" />
   <title>DocuLens AI — Evidence-grounded intelligence</title>
-  <link rel="stylesheet" href="/styles.css?v=chat-attachments-1" />
+  <link rel="stylesheet" href="/styles.css?v=library-aware-3" />
 </head>
 <body>
   <div class="app">
@@ -18,6 +18,7 @@
         <button class="nav-item" data-view="evaluate"><span>◎</span> RAG evaluation</button>
       </nav>
       <div class="sidebar-section-title"><span>YOUR SOURCES</span><button id="refreshDocs" title="Refresh documents">↻</button></div>
+      <div class="selection-summary"><span id="selectionSummary" aria-live="polite">0 selected</span><div><button type="button" id="selectAllDocs" title="Select all documents">All</button><button type="button" id="clearSelectedDocs" title="Clear document selection">None</button></div></div>
       <div id="documentList" class="document-list"><div class="side-loading">No documents uploaded yet.</div></div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-bottom">
@@ -42,6 +43,8 @@
             <button class="suggestion" data-question="Summarize the most important ideas in my documents">✧ Summarize key ideas <span>↗</span></button>
             <button class="suggestion" data-mode="compare" data-question="Compare the approaches, findings and limitations across these documents">⇄ Compare documents <span>↗</span></button>
             <button class="suggestion" data-question="What are the most important facts and figures supported by my documents?">▤ Extract important facts <span>↗</span></button>
+            <button class="suggestion" data-question="Which PDFs are in my sources?">▧ List my PDFs <span>↗</span></button>
+            <button class="suggestion" data-mode="compare" data-question="What do these documents have in common?">◎ Find common themes <span>↗</span></button>
           </div>
         </div>
         <div id="messages" class="messages" aria-live="polite"></div>
@@ -81,6 +84,6 @@
   </div>
   <div id="toast" class="toast" role="status"></div>
   <div id="tokenModal" class="modal-backdrop" hidden><div class="modal"><h2>Workspace access</h2><p>Enter the token matching <code>APP_ACCESS_TOKEN</code> in your backend environment. Leave empty for local development without authentication.</p><input id="tokenInput" class="field" type="password" placeholder="Workspace token"/><div class="modal-actions"><button id="cancelToken" class="subtle-btn">Cancel</button><button id="saveToken" class="primary-btn">Save for this tab</button></div></div></div>
-  <script src="/app.js?v=chat-modes-2" defer></script>
+  <script src="/app.js?v=library-aware-3" defer></script>
 </body>
 </html>

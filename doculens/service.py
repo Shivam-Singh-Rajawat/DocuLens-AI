@@ -6,7 +6,9 @@ from time import perf_counter
 from uuid import uuid4
 
 from doculens.chunking import chunk_pages
-from doculens.chat_intents import exact_search_term, exact_word_counts, is_greeting, is_vague_document_question
+from doculens.chat_intents import (exact_search_term, exact_word_counts, is_greeting,
+                                  is_vague_document_question, library_inventory_kind,
+                                  is_commonality_question, FILE_TYPE_NAMES, FILE_LABELS)
 from doculens.database import DocumentDB, utcnow
 from doculens.postgres_store import PostgresDocumentDB
 from doculens.embeddings import HashEmbeddings, SentenceEmbeddings
@@ -160,6 +162,77 @@ class RAGService:
                 "sources": sources, "provider": "document-search", "reranked": False,
                 "warnings": [], "retrieval_ms": 0}
 
+    def _library_answer(self, question: str, kind: str, source_ids: list[str] | None,
+                        session_id: str) -> dict:
+        """Answer file inventory questions from PostgreSQL, not low-similarity chunks."""
+        self._check_ids(source_ids)
+        documents = [d for d in self.db.documents() if not source_ids or d["id"] in source_ids]
+        if kind == "all":
+            matching = documents
+            heading = f"**{len(matching)} uploaded source(s)** in the selected library:"
+        else:
+            matching = [d for d in documents if d["kind"].lower() in FILE_TYPE_NAMES[kind]]
+            heading = (f"**{len(matching)} {FILE_LABELS[kind]}** in the selected sources:"
+                       if matching else
+                       f"No {FILE_LABELS[kind]} are uploaded in the selected sources.")
+        rows = [heading]
+        for d in matching[:30]:
+            rows.append(f"- **{d['name']}** ({d['kind'].upper()}, {d['pages']} page(s))")
+        if len(matching) > 30:
+            rows.append(f"...and {len(matching) - 30} additional source(s).")
+        if not matching and documents and kind != "all":
+            rows.append(
+                "\n**Available sources:** " +
+                ", ".join(f"{d['name']} ({d['kind'].upper()})" for d in documents[:15])
+            )
+        if kind == "ppt" and not matching:
+            rows.append(
+                "\nDocuLens currently accepts PDFs, DOCX and text formats; "
+                "convert a PowerPoint to PDF before uploading it."
+            )
+        if not documents:
+            rows.append("Attach a document or select sources in the sidebar.")
+        if re.search(r"\b(common|similar|overlap)\b", question, re.I):
+            rows.append(
+                "\nTo compare shared topics, ask **What do the selected documents have "
+                "in common?** (that compares their content instead of just listing files)."
+            )
+        answer = "\n".join(rows)
+        self.db.message(session_id, "user", question)
+        self.db.message(session_id, "assistant", answer)
+        return {"session_id": session_id, "question": question, "answer": answer,
+                "sources": [], "provider": "library", "reranked": False,
+                "warnings": [], "retrieval_ms": 0}
+
+    def _balanced_comparison(self, source_ids: list[str] | None,
+                             top_k: int | None = None) -> tuple[list[dict], list[str]]:
+        """Include representative evidence from each selected source for commonality tasks.
+
+        A vague 'what do these have in common' query has almost no lexical
+        discriminators; normal global top-K can silently exclude entire documents.
+        """
+        self._check_ids(source_ids)
+        selected = [d for d in self.db.documents() if not source_ids or d["id"] in source_ids]
+        warnings = []
+        if len(selected) > 8:
+            warnings.append("Comparison uses the first 8 sources; narrow your selection to compare more precisely.")
+            selected = selected[:8]
+        selected_ids = [d["id"] for d in selected]
+        if not selected_ids:
+            return [], warnings
+        groups: dict[str, list[dict]] = {doc_id: [] for doc_id in selected_ids}
+        for chunk in self.store.all_chunks(selected_ids):
+            if chunk["source_id"] in groups:
+                groups[chunk["source_id"]].append(chunk)
+        evidence = []
+        for doc in selected:
+            chunks = sorted(groups[doc["id"]], key=lambda c: (int(c.get("page", 1)),
+                                                               int(c.get("start", 0))))
+            if chunks:
+                evidence.append({**chunks[0], "semantic_score": 0.0,
+                                 "selection_method": "document-overview"})
+        return evidence, warnings
+
     def chat(self, question: str, *, session_id: str | None = None, source_ids=None,
              top_k: int | None = None, rerank=True, mode="qa", custom_instructions="") -> dict:
         if not question.strip():
@@ -191,6 +264,11 @@ class RAGService:
         term = exact_search_term(question)
         if term:
             return self._exact_search(question, term, source_ids, session_id)
+        kind = library_inventory_kind(question)
+        if kind:
+            return self._library_answer(question, kind, source_ids, session_id)
+        comparison = (is_commonality_question(question, mode) and
+                      len(source_ids or self.db.documents()) >= 2)
         retrieval_query = (
             "Explain the main topic, purpose, key points, conclusion and limitations "
             "of the selected document."
@@ -200,16 +278,36 @@ class RAGService:
             last_questions = [item["content"] for item in history if item["role"] == "user"]
             if last_questions:
                 retrieval_query = last_questions[-1][:450] + " " + question
-        search = self.search(retrieval_query, source_ids=source_ids, top_k=top_k,rerank=rerank)
-        hits = search["hits"]
-        credible = any(h.get("semantic_score",0) >= self.settings.min_similarity or
-                       h.get("bm25_score",0) > 0 for h in hits)
+        if comparison:
+            started = perf_counter()
+            hits, warnings = self._balanced_comparison(source_ids, top_k)
+            search = {"hits": hits, "warnings": warnings, "reranked": False,
+                      "latency_ms": round((perf_counter() - started) * 1000, 1)}
+            credible = bool(hits)
+        else:
+            search = self.search(retrieval_query, source_ids=source_ids, top_k=top_k,rerank=rerank)
+            hits = search["hits"]
+            credible = any(h.get("semantic_score",0) >= self.settings.min_similarity or
+                           h.get("bm25_score",0) > 0 for h in hits)
         if not credible:
             answer, provider = "I couldn't find that information in the selected sources.", "none"
             hits = []
         else:
-            answer, provider = generate(question, hits, history, settings=self.settings,
-                                        mode=mode, custom_instructions=custom_instructions)
+            model_question = question
+            if comparison:
+                model_question = (
+                    question + "\nUse evidence from EACH document separately. "
+                    "Identify shared themes only where at least two documents support them. "
+                    "If no topic is common to every document, say that clearly. "
+                    "Cite each source where relevant; don't assume all documents agree."
+                )
+            answer, provider = generate(model_question, hits, history, settings=self.settings,
+                                        mode="compare" if comparison else mode,
+                                        custom_instructions=custom_instructions)
+            # An abstention must not be followed by unrelated source references.
+            if re.match(r"^\s*(?:sorry[,!\. ]*)?i\s+(?:couldn't|could not|cannot|can't)\s+find\b",
+                        answer, re.I):
+                hits = []
         documents_by_id = {h["source_id"]:self.db.document(h["source_id"]) or {} for h in hits}
         sources = [{"number":i,"source_id":h["source_id"],"source_name":h["source_name"],
                     "page":h["page"] if h.get("kind") == "pdf" else None,
@@ -218,6 +316,7 @@ class RAGService:
                     "has_file":bool(documents_by_id[h["source_id"]].get("file_path")),
                     "excerpt":h["text"][:850],
                     "semantic_score":round(h.get("semantic_score",0),3),
+                    "selection_method":h.get("selection_method","retrieval"),
                     "rerank_score":round(h["rerank_score"],3) if "rerank_score" in h else None}
                    for i,h in enumerate(hits,1)]
         # An LLM-generated [99] must never be presented as a valid source marker.

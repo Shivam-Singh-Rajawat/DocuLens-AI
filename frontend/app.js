@@ -34,11 +34,17 @@ async function refresh(){
   renderDocs();renderLibrary();
  }catch(e){$('connection').innerHTML='<i></i> API unavailable';$('connection').className='connection offline';toast(e.message,true);}
 }
+function updateSelectionSummary(){
+ $('selectionSummary').textContent=`${state.selected.size} of ${state.docs.length} sources selected`;
+}
+$('selectAllDocs').onclick=()=>{state.selected=new Set(state.docs.map(d=>d.id));renderDocs();};
+$('clearSelectedDocs').onclick=()=>{state.selected.clear();renderDocs();};
 function renderDocs(){
+ updateSelectionSummary();
  const el=$('documentList');
  if(!state.docs.length){el.innerHTML='<div class="side-loading">No documents yet. Add your first source in the library.</div>';return;}
  el.innerHTML=state.docs.map(d=>`<label class="side-doc" title="${escapeHtml(d.name)}"><input type="checkbox" data-doc="${escapeHtml(d.id)}" ${state.selected.has(d.id)?'checked':''}/><span class="doc-glyph">${d.kind==='pdf'?'▧':'▤'}</span><span class="doc-name">${escapeHtml(d.name)}</span></label>`).join('');
- el.querySelectorAll('input').forEach(box=>box.addEventListener('change',e=>{e.target.checked?state.selected.add(e.target.dataset.doc):state.selected.delete(e.target.dataset.doc);}));
+ el.querySelectorAll('input').forEach(box=>box.addEventListener('change',e=>{e.target.checked?state.selected.add(e.target.dataset.doc):state.selected.delete(e.target.dataset.doc);updateSelectionSummary();}));
 }
 function renderLibrary(){
  const el=$('libraryGrid');
@@ -162,7 +168,7 @@ function appendMessage(role,text,extra=null){
  const card=document.createElement('div');card.className='message '+(role==='user'?'user':'assistant');
  const person=role==='user'?'You':'DocuLens AI';const avatar=role==='user'?'●':'✦';
  let sourceMarkup='';
- if(extra?.sources?.length){sourceMarkup=`<details class="source-summary"><summary>▤ ${extra.sources.length} retrieved evidence excerpts ${extra.reranked?'· Reranked':''}</summary><div class="source-items">${extra.sources.map(s=>`<div class="source-item" id="source-${s.number}"><b>[${s.number}] ${escapeHtml(s.source_name)}</b><small>${s.page?'Page '+s.page:'Text source'} · Vector similarity ${s.semantic_score}</small><p>${escapeHtml(s.excerpt)}</p>${s.origin?`<button data-source-url="${escapeHtml(s.origin)}">Open webpage</button>`:s.has_file?`<button data-source-open="${escapeHtml(s.source_id)}" data-source-page="${s.page||''}">Open original</button>`:''}</div>`).join('')}</div></details>`;}
+ if(extra?.sources?.length){sourceMarkup=`<details class="source-summary"><summary>▤ ${extra.sources.length} retrieved evidence excerpts ${extra.reranked?'· Reranked':''}</summary><div class="source-items">${extra.sources.map(s=>`<div class="source-item" id="source-${s.number}"><b>[${s.number}] ${escapeHtml(s.source_name)}</b><small>${s.page?'Page '+s.page:'Text source'} · ${s.selection_method==='document-overview'?'Document overview':'Vector similarity '+s.semantic_score}</small><p>${escapeHtml(s.excerpt)}</p>${s.origin?`<button data-source-url="${escapeHtml(s.origin)}">Open webpage</button>`:s.has_file?`<button data-source-open="${escapeHtml(s.source_id)}" data-source-page="${s.page||''}">Open original</button>`:''}</div>`).join('')}</div></details>`;}
  card.innerHTML=`<div class="avatar ${role==='assistant'?'ai':''}">${avatar}</div><div class="bubble"><div class="message-head"><b>${person}</b><small>${role==='assistant'&&extra?.provider?escapeHtml(extra.provider)+' · '+extra.retrieval_ms+' ms retrieval':''}</small></div><div class="message-text">${formatText(text)}</div>${sourceMarkup}</div>`;
  $('messages').appendChild(card);$('messages').scrollTop=$('messages').scrollHeight;
  card.querySelectorAll('[data-citation]').forEach(btn=>btn.onclick=()=>{const target=card.querySelector('#source-'+btn.dataset.citation);if(target){const parent=target.closest('details');parent.open=true;target.scrollIntoView({behavior:'smooth',block:'nearest'});}});

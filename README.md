@@ -112,6 +112,17 @@ A no-server command-line demo is also included:
 python -m scripts.demo_offline
 ```
 
+## Library-aware answers and document comparisons
+
+DocuLens answers file inventory questions from PostgreSQL metadata instead of sending vague phrases to vector search. Examples:
+
+- `What PPTs are in our sources?` — accurately reports when no PowerPoint is uploaded. Direct PPT/PPTX upload isn't supported; export slides to PDF first.
+- `Which PDFs are in my sources?` / `list my uploaded files` — lists only the selected matching source files.
+- `What do these documents have in common?` — combines one representative opening excerpt **from each selected document** (up to eight) and asks Gemini to identify overlaps, distinguish document-specific topics, and explain when no topic is shared across all. These are *document overviews*, not measured vector similarity scores, and are not exhaustive reads of long PDFs.
+- `Find the word the in this` — performs exact case-insensitive word lookup, including stopwords, with per-page counts.
+
+The chat sidebar includes All/None source selection and shortcut buttons for listing PDFs and finding common themes. If the model abstains, unrelated excerpts are not added as fake citation references. Use narrower questions and selected sources when full-length documents contain multiple topics.
+
 ## Conversational chatbot (document mode + general mode)
 
 The chat composer has two distinct answer boundaries:

@@ -14,3 +14,9 @@
 .attach-btn:hover{background:#315463}
 #chatView.drop-active:after{content:'Drop documents to attach';position:absolute;inset:10px 16px 130px;z-index:15;border:2px dashed var(--aqua);border-radius:18px;background:#12343bea;color:var(--aqua);font-size:22px;font-weight:750;display:grid;place-items:center;pointer-events:none}
 @media(max-width:640px){.attach-btn{padding:6px 8px;font-size:10px}.chat-file-chip{max-width:155px}#chatView.drop-active:after{inset:5px 7px 120px;font-size:15px}}
+
+/* Library-awareness controls */
+.selection-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 18px 10px;color:#a5d5da;font-size:11px}
+.selection-summary div{display:flex;gap:4px}
+.selection-summary button{background:#203449;color:#d3edf5;border:1px solid #416079;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer}
+.selection-summary button:hover{background:#31576d}

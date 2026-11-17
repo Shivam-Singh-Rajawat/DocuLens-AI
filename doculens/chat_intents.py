@@ -73,3 +73,58 @@ def exact_word_counts(term: str, documents: list[dict], chunks: list[dict]):
             if doc_id == doc["id"] and offsets:
                 counts[(doc_id,page)] = len(offsets)
     return counts
+
+
+# User questions about the library's inventory must consult document metadata,
+# not the embedding index (especially when the requested format is absent).
+FILE_TYPE_NAMES = {
+    "ppt": ("ppt", "pptx"), "pdf": ("pdf",),
+    "word": ("docx",), "text": ("txt", "text", "md", "markdown"),
+}
+FILE_LABELS = {
+    "ppt": "PowerPoint presentations (PPT/PPTX)",
+    "pdf": "PDF documents",
+    "word": "Word documents",
+    "text": "text documents",
+}
+
+
+def library_inventory_kind(question: str) -> str | None:
+    q = re.sub(r"\s+", " ", question.casefold()).strip()
+    is_library = bool(re.search(
+        r"\b(my|our|uploaded|upload|uploads|library|files?|sources?|documents?|collection)\b", q))
+    is_listing = bool(re.search(
+        r"\b(what|which|list|show|how many|any|available|present|have|contain|inside|in)\b", q))
+    if not (is_library and is_listing):
+        return None
+    if re.search(r"\b(ppt|pptx|powerpoint|slides?|presentations?)\b", q):
+        return "ppt"
+    if re.search(r"\b(pdfs?|pdf files?)\b", q):
+        return "pdf"
+    if re.search(r"\b(docx|word files?)\b", q):
+        return "word"
+    if re.search(r"\b(txt|text files?|markdown)\b", q):
+        return "text"
+    if re.search(r"\b(common|similarities?|overlap|compare|differences?)\b", q):
+        return None
+    # Generic inventory requests need a file-listing structure; the word
+    # "library" by itself is not a listing intent ("what does this library use").
+    if re.search(r"^\s*(?:please\s+)?(?:list|show|display|enumerate)\b", q) and re.search(
+        r"\b(files?|documents?|sources?|uploads?|library|collection)\b", q
+    ):
+        return "all"
+    if (re.search(r"\b(what|which|how many)\b", q)
+            and re.search(r"\b(files?|documents?|sources?|uploads?)\b", q)
+            and re.search(r"\b(my|our|have|uploaded|in|available|present)\b", q)):
+        return "all"
+    return None
+
+
+def is_commonality_question(question: str, mode: str = "qa") -> bool:
+    q = question.casefold()
+    if mode == "compare":
+        return True
+    return bool(
+        re.search(r"\b(common|similarities|similarity|overlap|shared|compare|differences?)\b", q)
+        and re.search(r"\b(files?|documents?|sources?|pdfs?|papers?|notes?|them|these|both)\b", q)
+    )

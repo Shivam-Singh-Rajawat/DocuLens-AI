@@ -91,3 +91,13 @@ These checks use a deterministic offline embedding backend with persistent SQLit
 - Full local suite: **39 tests passed**, and `node --check frontend/app.js` completed successfully.
 - Chrome browser attachment regression: Attach button, staged PDF, removal, clipboard-file paste, drag/drop, upload and document-scoped chat request all passed. Temporary test upload was deleted.
 - User's actual PostgreSQL / Chroma records are retained; local secret files are excluded by `.gitignore`. Source code pushed to private GitHub repository only.
+
+## Library-awareness and commonality upgrade — November 18, 2026
+
+- Reproduced reported query: `what ppt in in the our source and is the common in it`. Previously returned unrelated RAG fragments.
+- New metadata route: correctly responded **No PowerPoint presentations (PPT/PPTX) are uploaded**, enumerated available PDF/Markdown/text sources and offered an appropriate commonality prompt. Confirmed via live `/api/chat` HTTP request.
+- Separate PDF inventory query correctly returned two existing PDFs; no Gemini call or irrelevant vector evidence needed.
+- Added diverse source comparisons: first representative chunk per selected document (maximum 8). Live Gemini answer using five selected sources reported no universal common theme and differentiated document topics; all five source overviews were returned, identified as overview evidence rather than semantic similarity.
+- Improved abstention handling: does not attach random citations to a model answer that says information was unavailable.
+- Added All/None source selection count and two chat shortcuts. Chrome browser smoke passed source toggle, shortcut interactions, and page JavaScript checks.
+- Tests observed failing before implementation; focused suite 9 passed and full local suite **46 passed** at last run. This is a local RAG usability improvement, not model training or a comprehensive external hallucination benchmark.
